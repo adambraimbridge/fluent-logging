@@ -1,22 +1,22 @@
 package com.ft.membership.logging;
 
-public class StartedState implements OperationState {
+public class StartedState implements LoggerState {
   private static final StartedState INSTANCE = new StartedState();
 
   private StartedState() {}
 
   @Override
-  public void succeed(OperationContext context) {
+  public void succeed(FluentLogger context) {
     changeState(context, SuccessState.from(context));
   }
 
   @Override
-  public void fail(OperationContext context) {
+  public void fail(FluentLogger context) {
     changeState(context, FailState.from(context));
   }
 
-  public static StartedState from(final OperationContext context) {
-    context.with(Key.OperationState, "started");
+  public static StartedState from(final FluentLogger context) {
+    context.with(Key.LoggerState, "started");
     context.log();
 
     return INSTANCE;
