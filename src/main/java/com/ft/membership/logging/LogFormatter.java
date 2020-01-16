@@ -2,6 +2,7 @@ package com.ft.membership.logging;
 
 import static com.ft.membership.logging.LogFormatter.NameAndValue.nameAndValue;
 import static com.ft.membership.logging.Preconditions.checkNotNull;
+import static org.slf4j.event.Level.TRACE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,8 +13,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 public class LogFormatter {
   private static final String OUTCOME_IS_SUCCESS = "success";
@@ -39,6 +42,52 @@ public class LogFormatter {
     } else {
       logger = LoggerFactory.getLogger(actorOrLogger.getClass());
     }
+  }
+
+  void log(
+      final OperationContext operation,
+      final Outcome outcome,
+      final Level logLevel,
+      final Layout layout) {
+    final Collection<NameAndValue> msgParams = new ArrayList<>();
+
+    addOperationParameters(operation, msgParams);
+
+    if (outcome != null) {
+      addOutcome(outcome.getKey(), msgParams);
+    }
+
+    switch (logLevel) {
+      case DEBUG:
+        if (logger.isDebugEnabled()) {
+          logger.debug(buildMsg(msgParams, DEBUG, layout));
+        }
+        break;
+      case ERROR:
+        if (logger.isErrorEnabled()) {
+          logger.error(buildMsg(msgParams, ERROR, layout));
+        }
+        break;
+      case WARN:
+        if (logger.isWarnEnabled()) {
+          logger.warn(buildMsg(msgParams, WARN, layout));
+        }
+        break;
+      case TRACE:
+        if (logger.isTraceEnabled()) {
+          logger.trace(buildMsg(msgParams, TRACE.toString(), layout));
+        }
+        break;
+      default:
+        if (logger.isInfoEnabled()) {
+          logger.info(buildMsg(msgParams, INFO, layout));
+        }
+    }
+  }
+
+  private String buildMsg(
+      final Collection<NameAndValue> msgParams, String logLevel, Layout layout) {
+    return layout == Layout.Json ? buildMsgJson(msgParams, logLevel) : buildMsgString(msgParams);
   }
 
   void logStart(final Operation operation) {
@@ -166,20 +215,10 @@ public class LogFormatter {
   }
 
   private String buildMsgString(final Collection<NameAndValue> msgParams) {
-    final StringBuilder sb = new StringBuilder();
-    boolean addSeperator = false;
-    for (NameAndValue msgParam : msgParams) {
-      if (addSeperator) {
-        sb.append(" ");
-      }
-      sb.append(msgParam);
-      addSeperator = true;
-    }
-    return sb.toString();
+    return msgParams.stream().map(param -> param.toString()).collect(Collectors.joining(" "));
   }
 
   private String buildMsgJson(final Collection<NameAndValue> msgParams, String logLevel) {
-
     addLogLevalAndTime(msgParams, logLevel);
     Map<String, Object> map = new HashMap<>();
     msgParams.stream()
@@ -206,7 +245,16 @@ public class LogFormatter {
     addParametersAsNamedValues(msgParams, operation.getParameters());
   }
 
+  private void addOperationParameters(
+      final OperationContext operation, final Collection<NameAndValue> msgParams) {
+    addParametersAsNamedValues(msgParams, operation.getParameters());
+  }
+
   private void addOutcome(String outcome, final Collection<NameAndValue> msgParams) {
+    msgParams.add(nameAndValue("outcome", outcome));
+  }
+
+  private void addOutcome(Outcome outcome, final Collection<NameAndValue> msgParams) {
     msgParams.add(nameAndValue("outcome", outcome));
   }
 

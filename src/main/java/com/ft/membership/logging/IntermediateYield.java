@@ -2,6 +2,8 @@ package com.ft.membership.logging;
 
 import java.util.Map;
 
+/** Use an OperationContext implementation (e.g. SimpleOperationContext's operation/action) */
+@Deprecated
 public class IntermediateYield extends Yield {
   private Operation operation;
 
