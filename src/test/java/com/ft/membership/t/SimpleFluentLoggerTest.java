@@ -5,6 +5,7 @@ import static com.ft.membership.logging.SimpleFluentLogger.action;
 import static com.ft.membership.logging.SimpleFluentLogger.operation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -116,9 +117,42 @@ public class SimpleFluentLoggerTest {
   public void conflict_param_name() {
     operation("getUserSubscriptions", mockLogger).with(Key.LoggerState, "overwrite").started();
     verify(mockLogger, times(1)).isInfoEnabled();
+    verify(mockLogger).info("operation=\"getUserSubscriptions\" loggerState=\"started\"");
+  }
+
+  enum TestType {
+    SubscriptionNumber("subscriptionNumber");
+    private String id;
+
+    TestType(String id) {
+      this.id = id;
+    }
+
+    @Override
+    public String toString() {
+      return id;
+    }
+  };
+
+  @Test
+  public void with_custom_type() {
+    operation("getUserSubscriptions", mockLogger).with(TestType.SubscriptionNumber, "a").started();
+    verify(mockLogger, times(1)).isInfoEnabled();
     verify(mockLogger)
         .info(
-            "operation=\"getUserSubscriptions\" loggerState=\"started\"");
+            "operation=\"getUserSubscriptions\" subscriptionNumber=\"a\" loggerState=\"started\"");
+  }
+
+  @Test
+  public void with_null_key() {
+    TestType nil = null;
+    try {
+      operation("getUserSubscriptions", mockLogger).with(nil, "a").started();
+    } catch (NullPointerException e) {
+      assertEquals(e.getMessage(), "FluentLogger.with(key, value) requires non-null key");
+      return;
+    }
+    fail();
   }
 
   @Test(expected = AssertionError.class)
@@ -289,16 +323,14 @@ public class SimpleFluentLoggerTest {
     assertTrue(line1 + " must contain logLevel", line1.contains("\"logLevel\":\"INFO\""));
     assertTrue(
         line1 + " must contain operation", line1.contains("\"operation\":\"compound_success\""));
-    assertTrue(
-        line1 + " must contain loggerState", line1.contains("\"loggerState\":\"started\""));
+    assertTrue(line1 + " must contain loggerState", line1.contains("\"loggerState\":\"started\""));
     assertTrue(line1 + " must not contain outcome", !line1.contains("\"outcome\":\"success\""));
 
     final String line2 = lines.getAllValues().get(1);
     assertTrue(line2 + " must contain logLevel", line2.contains("\"logLevel\":\"INFO\""));
     assertTrue(
         line2 + " must contain operation", line2.contains("\"operation\":\"compound_success\""));
-    assertTrue(
-        line2 + " must contain loggerState", line2.contains("\"loggerState\":\"success\""));
+    assertTrue(line2 + " must contain loggerState", line2.contains("\"loggerState\":\"success\""));
     assertTrue(line2 + " must contain outcome", line2.contains("\"outcome\":\"success\""));
 
     verifyNoMoreInteractions(mockLogger);
